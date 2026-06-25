@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoTune</title>
+<style>
+  :root {
+    --bg:      #0a0a0f;
+    --card:    #12121a;
+    --border:  #1e1e2e;
+    --text:    #e8e8f0;
+    --dim:     #888899;
+    --accent:  #7c6fff;
+    --green:   #3dffa0;
+    --yellow:  #ffd93d;
+    --red:     #ff5f6d;
+    --radius:  14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 20px 60px;
+    gap: 24px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 700px;
+  }
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  header .spacer { flex: 1; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .card-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 18px;
+  }
+
+  /* ── Power button ── */
+  #powerBtn {
+    background: none;
+    border: 2px solid var(--border);
+    border-radius: 100px;
+    color: var(--dim);
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #powerBtn.on {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 16px rgba(61,255,160,0.2);
+  }
+
+  /* ── Pitch display ── */
+  .pitch-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    margin: 8px 0 24px;
+  }
+  .note-block {
+    text-align: center;
+  }
+  .note-block .label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  .note-block .note {
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1;
+    min-width: 80px;
+  }
+  .note-block .freq {
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .arrow {
+    font-size: 1.4rem;
+    color: var(--dim);
+    align-self: center;
+    margin-top: 10px;
+  }
+
+  /* ── Cents meter ── */
+  .meter-wrap {
+    position: relative;
+    height: 10px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: visible;
+    margin: 0 8px 8px;
+  }
+  .meter-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 100px;
+    transition: width 0.08s, left 0.08s, background 0.2s;
+  }
+  .meter-center {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: var(--dim);
+    border-radius: 2px;
+  }
+  .meter-cursor {
+    position: absolute;
+    top: -5px;
+    width: 4px; height: 20px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: translateX(-50%);
+    transition: left 0.08s;
+  }
+  .meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--dim);
+    margin-top: 4px;
+    padding: 0 8px;
+  }
+  .cents-value {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-top: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Confidence dot ── */
+  .signal-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: var(--dim);
+    margin-top: 12px;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+  .dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.mid { background: var(--yellow); }
+
+  /* ── Controls ── */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+  .ctrl-group label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  select, input[type=range] { width: 100%; }
+  select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888899'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  input[type=range] {
+    appearance: none;
+    height: 4px;
+    border-radius: 100px;
+    background: var(--border);
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(124,111,255,0.5);
+  }
+  .range-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+  .range-val {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Device setup ── */
+  .device-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ── No signal state ── */
+  .no-signal .note { color: var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AutoTune</h1>
+  <span class="spacer"></span>
+  <button id="powerBtn" onclick="togglePower()">OFF</button>
+</header>
+
+<!-- Pitch display -->
+<div class="card">
+  <div class="card-title">Pitch Monitor</div>
+
+  <div class="pitch-display" id="pitchDisplay">
+    <div class="note-block">
+      <div class="label">Singing</div>
+      <div class="note" id="noteDetected">—</div>
+      <div class="freq" id="freqDisplay">— Hz</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="note-block">
+      <div class="label">Target</div>
+      <div class="note" id="noteTarget" style="color:var(--accent)">—</div>
+      <div class="freq" id="shiftDisplay">0¢</div>
+    </div>
+  </div>
+
+  <!-- Cents meter (±50 cents range) -->
+  <div class="meter-wrap" id="meterWrap">
+    <div class="meter-fill" id="meterFill"></div>
+    <div class="meter-center"></div>
+    <div class="meter-cursor" id="meterCursor" style="left:50%"></div>
+  </div>
+  <div class="meter-labels">
+    <span>-50¢</span><span>flat</span><span>0</span><span>sharp</span><span>+50¢</span>
+  </div>
+  <div class="cents-value" id="centsValue">0.0¢ raw deviation</div>
+
+  <div class="signal-row">
+    <div class="dot" id="signalDot"></div>
+    <span id="signalLabel">No signal</span>
+    <span style="margin-left:auto;font-variant-numeric:tabular-nums" id="confLabel"></span>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="card">
+  <div class="card-title">Controls</div>
+  <div class="controls-grid">
+    <div class="ctrl-group">
+      <label>Key</label>
+      <select id="keySelect" onchange="updateSettings()">
+        {% for k in keys %}
+        <option value="{{ k.index }}">{{ k.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Scale</label>
+      <select id="scaleSelect" onchange="updateSettings()">
+        {% for s in scales %}
+        <option value="{{ s }}" {% if s == 'major' %}selected{% endif %}>{{ s.title() }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Correction</label>
+      <input type="range" id="amountSlider" min="0" max="100" value="100" oninput="updateSettings(); document.getElementById('amountVal').textContent=this.value+'%'">
+      <div class="range-row"><span>Natural</span><span class="range-val" id="amountVal">100%</span><span>Hard</span></div>
+    </div>
+    <div class="ctrl-group">
+      <label>Retune Speed</label>
+      <input type="range" id="speedSlider" min="1" max="100" value="40" oninput="updateSettings(); document.getElementById('speedVal').textContent=this.value+'%'">
+      <div class="range-row"><span>Slow</span><span class="range-val" id="speedVal">40%</span><span>Snap</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Devices -->
+<div class="card">
+  <div class="card-title">Audio Devices</div>
+  <div class="device-grid">
+    <div class="ctrl-group">
+      <label>Input (mic)</label>
+      <select id="inputDevice">
+        {% for d in devices %}
+        {% if d.inputs > 0 %}
+        <option value="{{ d.index }}">{{ d.name }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Output (monitor)</label>
+      <select id="outputDevice">
+        {% for d in devices %}
+        {% if d.outputs > 0 %}
+        <option value="{{ d.index }}">{{ d.name }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <p style="font-size:0.7rem;color:var(--dim);margin-top:14px;">
+    To use in Ableton: set Output to <strong>BlackHole 2ch</strong>, then set Ableton's audio input to BlackHole.
+  </p>
+</div>
+
+<script>
+let isOn = false;
+let sse  = null;
+
+function togglePower() {
+  if (isOn) {
+    fetch('/api/stop', { method: 'POST' });
+    isOn = false;
+    document.getElementById('powerBtn').textContent = 'OFF';
+    document.getElementById('powerBtn').classList.remove('on');
+    if (sse) { sse.close(); sse = null; }
+    resetDisplay();
+  } else {
+    const inDev  = document.getElementById('inputDevice').value;
+    const outDev = document.getElementById('outputDevice').value;
+    fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input_device: inDev, output_device: outDev })
+    }).then(r => r.json()).then(d => {
+      if (d.error) { alert('Audio error: ' + d.error); return; }
+      isOn = true;
+      document.getElementById('powerBtn').textContent = 'ON';
+      document.getElementById('powerBtn').classList.add('on');
+      startSSE();
+    });
+  }
+}
+
+function startSSE() {
+  sse = new EventSource('/api/status/stream');
+  sse.onmessage = e => updateDisplay(JSON.parse(e.data));
+  sse.onerror   = () => {};
+}
+
+function updateDisplay(s) {
+  const hasSignal = s.has_signal;
+
+  document.getElementById('noteDetected').textContent = s.note_detected || '—';
+  document.getElementById('noteTarget').textContent   = s.note_target   || '—';
+  document.getElementById('freqDisplay').textContent  = hasSignal ? s.freq + ' Hz' : '— Hz';
+  document.getElementById('shiftDisplay').textContent = s.cents_applied !== 0
+    ? (s.cents_applied > 0 ? '+' : '') + s.cents_applied.toFixed(1) + '¢'
+    : '0¢';
+
+  // Cents meter (clamp to ±50)
+  const raw    = Math.max(-50, Math.min(50, s.cents_raw));
+  const pct    = 50 + raw;                          // 0–100% of bar
+  const fill   = document.getElementById('meterFill');
+  const cursor = document.getElementById('meterCursor');
+
+  cursor.style.left = pct + '%';
+  if (Math.abs(raw) < 5) {
+    fill.style.background = 'transparent';
+    cursor.style.background = 'var(--green)';
+  } else if (Math.abs(raw) < 20) {
+    fill.style.background = 'rgba(255,217,61,0.25)';
+    cursor.style.background = 'var(--yellow)';
+  } else {
+    fill.style.background = 'rgba(255,95,109,0.2)';
+    cursor.style.background = 'var(--red)';
+  }
+
+  // Fill from center to cursor
+  if (raw < 0) {
+    fill.style.left  = pct + '%';
+    fill.style.width = (50 - pct) + '%';
+  } else {
+    fill.style.left  = '50%';
+    fill.style.width = (pct - 50) + '%';
+  }
+
+  document.getElementById('centsValue').textContent =
+    (hasSignal ? (s.cents_raw >= 0 ? '+' : '') + s.cents_raw.toFixed(1) + '¢ raw deviation' : 'no vocal detected');
+
+  // Signal dot
+  const dot   = document.getElementById('signalDot');
+  const label = document.getElementById('signalLabel');
+  const conf  = document.getElementById('confLabel');
+  if (!isOn) { dot.className = 'dot'; label.textContent = 'Stopped'; return; }
+  if (hasSignal) {
+    dot.className = 'dot on';
+    label.textContent = 'Vocal detected';
+    conf.textContent = 'conf ' + (s.confidence * 100).toFixed(0) + '%';
+  } else {
+    dot.className = 'dot';
+    label.textContent = 'No vocal signal';
+    conf.textContent = '';
+  }
+}
+
+function resetDisplay() {
+  document.getElementById('noteDetected').textContent = '—';
+  document.getElementById('noteTarget').textContent   = '—';
+  document.getElementById('freqDisplay').textContent  = '— Hz';
+  document.getElementById('shiftDisplay').textContent = '0¢';
+  document.getElementById('centsValue').textContent   = '0.0¢ raw deviation';
+  document.getElementById('meterFill').style.width    = '0%';
+  document.getElementById('meterCursor').style.left   = '50%';
+  document.getElementById('signalDot').className      = 'dot';
+  document.getElementById('signalLabel').textContent  = 'Stopped';
+  document.getElementById('confLabel').textContent    = '';
+}
+
+function updateSettings() {
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      key:    parseInt(document.getElementById('keySelect').value),
+      scale:  document.getElementById('scaleSelect').value,
+      amount: parseInt(document.getElementById('amountSlider').value) / 100,
+      speed:  parseInt(document.getElementById('speedSlider').value)  / 100,
+    })
+  });
+}
+</script>
+</body>
+</html>
