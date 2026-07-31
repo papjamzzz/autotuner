@@ -102,10 +102,13 @@ def api_settings_get():
 def api_settings_post():
     d = request.json or {}
     updates = {}
-    if 'key'    in d: updates['key']    = int(d['key'])
-    if 'scale'  in d: updates['scale']  = str(d['scale'])
-    if 'amount' in d: updates['amount'] = max(0.0, min(1.0, float(d['amount'])))
-    if 'speed'  in d: updates['speed']  = max(0.0, min(1.0, float(d['speed'])))
+    try:
+        if 'key'    in d: updates['key']    = int(d['key']) % 12
+        if 'scale'  in d: updates['scale']  = str(d['scale'])
+        if 'amount' in d: updates['amount'] = max(0.0, min(1.0, float(d['amount'])))
+        if 'speed'  in d: updates['speed']  = max(0.0, min(1.0, float(d['speed'])))
+    except (TypeError, ValueError) as ex:
+        return jsonify({'error': f'invalid settings payload: {ex}'}), 400
     tuner.update(**updates)
     return jsonify({'ok': True})
 
