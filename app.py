@@ -13,6 +13,14 @@ stream = None
 stream_lock = threading.Lock()
 
 
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Referrer-Policy', 'no-referrer')
+    return resp
+
+
 # ── Audio stream ──────────────────────────────────────────────────────────────
 
 def _audio_callback(indata, outdata, frames, time_info, status):
