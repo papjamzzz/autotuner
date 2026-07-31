@@ -17,7 +17,17 @@ stream_lock = threading.Lock()
 
 def _audio_callback(indata, outdata, frames, time_info, status):
     samples = indata[:, 0].copy()
-    out     = tuner.process(samples)
+    try:
+        out = tuner.process(samples)
+        if out.shape[0] != frames:
+            # Defensive: a processing bug returning the wrong length would
+            # otherwise raise inside PortAudio's callback and silently kill
+            # the stream (UI would keep showing "ON" with no audio).
+            out = samples
+    except Exception:
+        # Never let a pitch-detection/shift error abort the audio stream —
+        # pass the dry signal through instead of dropping audio or crashing.
+        out = samples
     outdata[:] = out.reshape(-1, 1)
 
 
