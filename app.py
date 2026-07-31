@@ -130,8 +130,13 @@ def api_status_stream():
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _device_list():
-    devs = sd.query_devices()
-    out  = []
+    try:
+        devs = sd.query_devices()
+    except Exception:
+        # No audio backend / no devices available (e.g. headless machine) —
+        # let the UI render with an empty device list instead of a 500.
+        return []
+    out = []
     for i, d in enumerate(devs):
         if d['max_input_channels'] > 0 or d['max_output_channels'] > 0:
             out.append({
